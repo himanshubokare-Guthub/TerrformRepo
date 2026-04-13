@@ -12,5 +12,10 @@ resource "aws_instance" "test" {
       Name="test1"
     }
 }
-
-   
+resource "aws_instance" "testfromec2" {
+    ami = "ami-0ea87431b78a82070"
+    instance_type = "t2.micro"
+    tags = {
+      Name="EC2HB"
+    }
+}
