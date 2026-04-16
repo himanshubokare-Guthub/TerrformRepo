@@ -5,8 +5,126 @@ resource "aws_vpc" "prod" {
     Name="prod-vpc"
   }
 }
-resource "aws_instance" "name" {
-  ami = "ami-0c55b159cbfaa5888"
-  instance_type = "t2.micro"
+
+resource "aws_subnet" "public" {
+  vpc_id = aws_vpc.prod.id
+  cidr_block = "10.0.1.0/24"
+    tags = {
+        Name="public-subnet"
+    }
     
+}
+
+    resource "aws_subnet" "private" {
+        vpc_id = aws_vpc.prod.id
+        cidr_block = "10.0.2.0/24"
+        tags = {
+            Name="private-subnet"
+        }
+}
+
+resource "aws_internet_gateway" "gw" {
+    vpc_id = aws_vpc.prod.id
+    tags = {
+        Name="prod-ig"
+    }
+}
+
+resource "aws_route_table" "public" {
+    vpc_id = aws_vpc.prod.id
+    tags = {
+        Name="public-rt"
+    }
+}
+resource "aws_route" "name" {
+    route_table_id = aws_route_table.public.id
+    destination_cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.gw.id
+
+}
+
+resource "aws_route_table_association" "public" {
+    subnet_id = aws_subnet.public.id
+    route_table_id = aws_route_table.public.id
+  
+}
+
+resource "aws_security_group" "sg" {
+    name = "prod-sg"
+    description = "Allow SSH and HTTP"
+    vpc_id = aws_vpc.prod.id
+
+    ingress {
+        from_port = 22
+        to_port = 22
+        protocol = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+    ingress {
+        from_port = 80
+        to_port = 80
+        protocol = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+
+    egress {
+        from_port = 80
+        to_port = 80
+        protocol = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+}
+
+resource "aws_eip" "nat_eip" {
+  domain = "vpc"
+}
+
+resource "aws_nat_gateway" "ngw" {
+      allocation_id = aws_eip.nat_eip.id
+     subnet_id     = aws_subnet.private.id   # must be PUBLIC subnet
+    tags = {
+        Name="nat-gw"
+    }
+  
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.prod.id
+    tags = {
+        Name="private-rt"
+    }
+}
+
+resource "aws_route" "private" {
+    route_table_id = aws_route_table.private.id
+    destination_cidr_block = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.ngw.id
+}
+
+resource "aws_route_table_association" "private" {
+    subnet_id = aws_subnet.private.id
+    route_table_id = aws_route_table.private.id
+  
+}
+
+resource "aws_instance" "Public" {
+  ami ="ami-098e39bafa7e7303d"
+  instance_type = "t2.micro" 
+  vpc_security_group_ids = [aws_security_group.sg.id]
+  subnet_id = aws_subnet.public.id
+  tags = {
+    Name="Public-Instance"
+
+  }
+ 
+}
+
+resource "aws_instance" "Private" {
+  ami = "ami-098e39bafa7e7303d"
+  instance_type = "t2.micro"
+  vpc_security_group_ids = [aws_security_group.sg.id]
+  subnet_id = aws_subnet.private.id
+  tags = {
+    Name="Private-Instance"
+  }
 }
