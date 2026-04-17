@@ -5,8 +5,9 @@ resource "aws_db_instance" "default" {
   engine                  = "mysql"
   engine_version          = "8.0"
   instance_class          = "db.t3.micro"
-  manage_master_user_password = true #rds and secret manager manage this password
+  #manage_master_user_password = true #rds and secret manager manage this password
   username                    = "admin"
+  password = "Admin12345"
   db_subnet_group_name    = aws_db_subnet_group.sub-grp.id
   parameter_group_name    = "default.mysql8.0"
   backup_retention_period  = 7   # Retain backups for 7 days
@@ -49,5 +50,11 @@ resource "aws_db_subnet_group" "sub-grp" {
   }
 }
 
-#Read replicated from provider.tf and main.tf of both repos. The code is related to AWS provider configuration, VPC, subnets, NAT gateway, route tables, and RDS instance creation with managed secrets.
-
+resource "aws_db_instance" "replica" {
+  identifier = "read-replica-db"
+  replicate_source_db = aws_db_instance.default.identifier
+  instance_class = "db.t3.micro"
+  # No username/password needed here ❗
+  publicly_accessible = false
+  skip_final_snapshot = true
+}
